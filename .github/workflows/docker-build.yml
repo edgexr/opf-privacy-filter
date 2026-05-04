@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -10,7 +10,7 @@ permissions:
   packages: write
 
 jobs:
-  build-and-push:
+  build-standard:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -39,6 +39,37 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/opf-privacy-filter:latest
-            ghcr.io/${{ github.repository_owner }}/opf-privacy-filter:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/opf-privacy-filter:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-cuda:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (CUDA)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.cuda
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/opf-privacy-filter:latest-cuda
+            ghcr.io/${{ github.repository_owner }}/opf-privacy-filter:${{ github.ref_name }}-cuda
           cache-from: type=gha
           cache-to: type=gha,mode=max
